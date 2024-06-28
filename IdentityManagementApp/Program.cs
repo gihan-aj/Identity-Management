@@ -28,6 +28,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Configuration.AddUserSecrets<Program>();
 
+// to inject JWTService class inside controllers
+builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<EmailService>();
+
 builder.Services.AddScoped<ContextSeedService>();
 
 // defining IdentityCore service
