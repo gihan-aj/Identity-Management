@@ -115,15 +115,7 @@ namespace IdentityManagementApp.Controllers
             {
                 if(await SendConfirmEmailAsync(userToAdd))
                 {
-                    var response = new JsonResult(new
-                    {
-                        title = "Account Created",
-                        message = "Your account has been created, please confirm your email address."
-                    });
-
-                    response.StatusCode = 201;
-
-                    return response;
+                    return CreateJsonResult(201, "Account Created", "Your account has been created. please confirm your email address.");
 
                     //return Ok(new JsonResult(new 
                     //{ 
@@ -137,6 +129,39 @@ namespace IdentityManagementApp.Controllers
             catch (Exception)
             {
                 return BadRequest("Failed to send email. Please contact administration");
+            }
+        }
+
+        [HttpPut("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(ConfirmEmailDto model)
+        {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                return Unauthorized("This email has not been registered yet.");
+            }
+
+            if(user.EmailConfirmed == true)
+            {
+                return BadRequest("Your email has confirmed before. Please login to your account.");
+            }
+
+            try
+            {
+                var decodedTokenBytes = WebEncoders.Base64UrlDecode(model.Token);
+                var decodedToken = Encoding.UTF8.GetString(decodedTokenBytes);
+
+                var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+                if(result.Succeeded == true)
+                {
+                    return CreateJsonResult(200, "Email Confirmed", "Your email address is confirmed. You can login now.");
+                }
+
+                return BadRequest("Invalid token. Please try again");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Invalid token. Please try again");
             }
         }
 
@@ -190,6 +215,19 @@ namespace IdentityManagementApp.Controllers
             }
 
             return char.ToUpper(name[0]) + name.Substring(1);
+        }
+
+        private JsonResult CreateJsonResult(int statusCode, string title, string message)
+        {
+            var response = new JsonResult(new
+            {
+                title = title,
+                message = message
+            });
+
+            response.StatusCode = statusCode;
+
+            return response;
         }
 
         #endregion
