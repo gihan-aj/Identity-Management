@@ -5,9 +5,12 @@ using IdentityManagementApp.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace IdentityManagementApp.Controllers
@@ -19,17 +22,20 @@ namespace IdentityManagementApp.Controllers
         private readonly SignInManager<User> _signInManager;
         private readonly UserManager<User> _userManager;
         private readonly JwtService _jwtService;
+        private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
 
         public AccountController(
             SignInManager<User> signInManager,
             UserManager<User> userManager,
             JwtService jwtService,
+            EmailService emailService,
             IConfiguration configuration)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _jwtService = jwtService;
+            _emailService = emailService;
             _configuration = configuration;
         }
 
@@ -79,6 +85,62 @@ namespace IdentityManagementApp.Controllers
             return await CreateApplicationUserDto(user);
         }
 
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterDto model)
+        {
+            if(await CheckEmailExistsAsync(model.Email))
+            {
+                return BadRequest($"An account is already created using {model.Email}. Please try with another email address.");
+            }
+
+            var userToAdd = new User
+            {
+                FirstName = model.FirstName.ToLower(),
+                LastName = model.LastName.ToLower(),
+                UserName = model.Email.ToLower(),
+                Email = model.Email.ToLower(),
+            };
+
+            // create user inside AspNetUsers table
+            var result = await _userManager.CreateAsync(userToAdd, model.Password);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+
+            await _userManager.AddToRoleAsync(userToAdd, SeedData.MemberRole);
+
+            try
+            {
+                if(await SendConfirmEmailAsync(userToAdd))
+                {
+                    var response = new JsonResult(new
+                    {
+                        title = "Account Created",
+                        message = "Your account has been created, please confirm your email address."
+                    });
+
+                    response.StatusCode = 201;
+
+                    return response;
+
+                    //return Ok(new JsonResult(new 
+                    //{ 
+                    //    title = "Account Created", 
+                    //    message = "Your account has been created, please confirm your email address." 
+                    //}));
+                }
+
+                return BadRequest("Failed to send email. Please contact administration");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Failed to send email. Please contact administration");
+            }
+        }
+
+
         #region Private Helper Methods
 
         private async Task<ActionResult<UserDto>> CreateApplicationUserDto(User user)
@@ -89,6 +151,45 @@ namespace IdentityManagementApp.Controllers
                 LastName = user.UserName,
                 JWT = await _jwtService.CreateJWT(user),
             };
+        }
+
+        private async Task<bool> CheckEmailExistsAsync(string email)
+        {
+            return await _userManager.Users.AnyAsync(x => x.Email == email.ToLower());
+        }
+
+        private async Task<bool> SendConfirmEmailAsync(User user)
+        {
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            var clientUrl = _configuration["JWT:ClientUrl"];
+            var confirmEmailPath = _configuration["Email:ConfirmEmailPath"];
+
+            var url = $"{clientUrl}/{confirmEmailPath}?token={token}&email={user.Email}";
+
+            var firstName = CapitalizeFirstLetter(user.FirstName);
+            var appName = _configuration["Email:ApplicationName"];
+
+            var body = $"<p>Hello {firstName},</p>" +
+                "<p>Please confirm your email address by clicking on the following link.</p>" +
+                $"<p><a href=\"{url}\">Click here.</a></p>" +
+                "<p>Thank you,</p>" +
+                $"<p>{appName}</p>";
+
+            var emailSend = new EmailSendDto(user.Email, "Confirm your email", body, true);
+
+            return await _emailService.SendEmailAsync(emailSend);
+        }
+
+        private string CapitalizeFirstLetter(string name)
+        {
+            if (string.IsNullOrEmpty(name)) 
+            {  
+                return name; 
+            }
+
+            return char.ToUpper(name[0]) + name.Substring(1);
         }
 
         #endregion
