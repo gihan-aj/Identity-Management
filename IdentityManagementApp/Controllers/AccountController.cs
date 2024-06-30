@@ -2,6 +2,7 @@
 using IdentityManagementApp.DTOs.Account;
 using IdentityManagementApp.Models;
 using IdentityManagementApp.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Runtime.InteropServices;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -37,6 +39,15 @@ namespace IdentityManagementApp.Controllers
             _jwtService = jwtService;
             _emailService = emailService;
             _configuration = configuration;
+        }
+
+        [Authorize]
+        [HttpGet("refresh-user-token")]
+        public async Task<ActionResult<UserDto>> RefreshUserToken()
+        {
+            var user = await _userManager.FindByNameAsync(User.FindFirst(ClaimTypes.Email)?.Value);
+
+            return await CreateApplicationUserDto(user);
         }
 
         [HttpPost("login")]
