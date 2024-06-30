@@ -143,7 +143,7 @@ namespace IdentityManagementApp.Controllers
 
             if(user.EmailConfirmed == true)
             {
-                return BadRequest("Your email has confirmed before. Please login to your account.");
+                return BadRequest("Your email was confirmed before. Please login to your account.");
             }
 
             try
@@ -165,6 +165,107 @@ namespace IdentityManagementApp.Controllers
             }
         }
 
+        [HttpPost("resend-email-confirmation-link/{email}")]
+        public async Task<IActionResult> ResendEmailConfirmationLink(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest("Invalid email");
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                return Unauthorized("This email address has not been registered yet.");
+            }
+
+            if (user.EmailConfirmed == true)
+            {
+                return BadRequest("Your email was confirmed before. Please login to your account.");
+            }
+
+            try
+            {
+                if(await SendConfirmEmailAsync(user))
+                {
+                    return CreateJsonResult(200, "Confirmation link sent", "Please confirm your email address.");
+                }
+
+                return BadRequest("Failed to send email. Please contact administration");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Failed to send email. Please contact administration");
+            }
+        }
+
+        [HttpPost("forgot-username-or-password/{email}")]
+        public async Task<IActionResult> ForgotUsernameOrPassword(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest("Invalid email");
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                return Unauthorized("This email address has not been registerd yet.");
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return BadRequest("Please confirm your email address first.");
+            }
+
+            try
+            {
+                if (await SendForgotUsernameOrPasswordEmailAsync(user))
+                {
+                    return CreateJsonResult(200, "Forgot username or password email sent", "Please check your email");
+                }
+
+                return BadRequest("Failed to send email. Please contact administration");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Failed to send email. Please contact administration");
+            }
+        }
+
+        [HttpPut("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto model)
+        {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                return Unauthorized("This email address has not been registered yet.");
+            }
+            if (!user.EmailConfirmed)
+            {
+                return BadRequest("Please confirm your email first.");
+            }
+
+            try
+            {
+                var decodedTokenBytes = WebEncoders.Base64UrlDecode(model.Token);
+                var decodedToken = Encoding.UTF8.GetString(decodedTokenBytes);
+
+                var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
+                if (result.Succeeded)
+                {
+                    return CreateJsonResult(200, "Password reset success", "Your password has been reset.");
+                }
+
+                return BadRequest("Invalid token. Please try again");
+            }
+            catch (Exception)
+            {
+                return BadRequest("Invalid token. Please try again");
+            }
+        }
+
 
         #region Private Helper Methods
 
@@ -172,8 +273,8 @@ namespace IdentityManagementApp.Controllers
         {
             return new UserDto
             {
-                FirstName = user.UserName,
-                LastName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
                 JWT = await _jwtService.CreateJWT(user),
             };
         }
@@ -195,14 +296,83 @@ namespace IdentityManagementApp.Controllers
 
             var firstName = CapitalizeFirstLetter(user.FirstName);
             var appName = _configuration["Email:ApplicationName"];
+            int year = DateTime.Now.Year;
 
-            var body = $"<p>Hello {firstName},</p>" +
-                "<p>Please confirm your email address by clicking on the following link.</p>" +
-                $"<p><a href=\"{url}\">Click here.</a></p>" +
-                "<p>Thank you,</p>" +
-                $"<p>{appName}</p>";
+            var containerStyle = "font-family: Arial, sans-serif; width: 100%; max-width: 576px; margin: 0 auto; background-color: #ffffff; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);";
+            var headerStyle = "text-align: center; padding: 20px 0; border-bottom: 1px solid #dddddd;";
+            var h1Style = "margin: 0; color: #333333;";
+            var contentStyle = "padding: 20px;";
+            var pStyle = "line-height: 1.5; color: #666666;";
+            var aStyle = "display: inline-block; padding: 10px 20px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 8px;";
+            var footerStyle = "text-align: center; padding: 20px; border-top: 1px solid #dddddd; color: #999999; font-size: 12px;";
+
+            //var body = $"<p>Hello {firstName},</p>" +
+            //    "<p>Please confirm your email address by clicking on the following link.</p>" +
+            //    $"<p><a href=\"{url}\">Click here.</a></p>" +
+            //    $"<p>Thank you,<br>The {appName} Team</p>" +
+            //    $"<div style=\"{footerStyle}\">" +
+            //    $"<p>&copy; {year} {appName}. All rights reserved.</p>" +
+            //    "</div>";
+
+            var body = $"<div style=\"{containerStyle}\">" +
+                $"<div style=\"{headerStyle}\">" +
+                $"<h1 style=\"{h1Style}\">Email Confirmation</h1>" +
+                "</div>" +
+                $"<div style=\"{contentStyle}\">" +
+                $"<p style=\"{pStyle}\">Hi {firstName},</p>" +
+                $"<p style=\"{pStyle}\">Please confirm your email address by clicking the button below:</p>" +
+                $"<a style=\"{aStyle}\" href=\"{url}\">Confirm Email</a>" +
+                $"<p style=\"{pStyle}\">If you did not sign up for this account, you can ignore this email.</p>" +
+                $"<p style=\"{pStyle}\">Thanks,<br>The {appName} Team</p>" +
+                "</div>" +
+                $"<div style=\"{footerStyle}\">" +
+                $"<p>&copy; {year} {appName}. All rights reserved.</p>" +
+                "</div>";
 
             var emailSend = new EmailSendDto(user.Email, "Confirm your email", body, true);
+
+            return await _emailService.SendEmailAsync(emailSend);
+        }
+
+        private async Task<bool> SendForgotUsernameOrPasswordEmailAsync(User user)
+        {
+            var token =  await _userManager.GeneratePasswordResetTokenAsync(user);
+            token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            var clientUrl = _configuration["JWT:ClientUrl"];
+            var resetPasswordPath = _configuration["Email:ResetPasswordPath"];
+
+            var url = $"{clientUrl}/{resetPasswordPath}?token={token}&email={user.Email}";
+
+            var firstName = CapitalizeFirstLetter(user.FirstName);
+            var appName = _configuration["Email:ApplicationName"];
+            int year = DateTime.Now.Year;
+
+            var containerStyle = "font-family: Arial, sans-serif; width: 100%; max-width: 576px; margin: 0 auto; background-color: #ffffff; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);";
+            var headerStyle = "text-align: center; padding: 20px 0; border-bottom: 1px solid #dddddd;";
+            var h1Style = "margin: 0; color: #333333;";
+            var contentStyle = "padding: 20px;";
+            var pStyle = " line-height: 1.5; color: #666666;";
+            var aStyle = "display: inline-block; padding: 10px 20px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 8px;";
+            var footerStyle = "text-align: center; padding: 20px; border-top: 1px solid #dddddd; color: #999999; font-size: 12px;";        
+
+            var body = $"<div style=\"{containerStyle}\">" +
+                $"<div style=\"{headerStyle}\">" +
+                $"<h1 style=\"{h1Style}\">Forgot Username or Password</h1>" +
+                "</div>" +
+                $"<div style=\"{contentStyle}\">" +
+                $"<p style=\"{pStyle}\">Hi {firstName},</p>" +
+                $"<p style=\"{pStyle}\">Username: {user.UserName},</p>" +
+                $"<p style=\"{pStyle}\">In order to reset your password, please click on the following button:</p>" +
+                $"<a style=\"{aStyle}\" href=\"{url}\">Reset Password</a>" +
+                $"<p style=\"{pStyle}\">If you did not sign up for this account, you can ignore this email.</p>" +
+                $"<p style=\"{pStyle}\">Thanks,<br>The {appName} Team</p>" +
+                "</div>" +
+                $"<div style=\"{footerStyle}\">" +
+                $"<p>&copy; {year} {appName}. All rights reserved.</p>" +
+                "</div>";
+
+            var emailSend = new EmailSendDto(user.Email, "Forgot username or password", body, true);
 
             return await _emailService.SendEmailAsync(emailSend);
         }
@@ -225,6 +395,7 @@ namespace IdentityManagementApp.Controllers
                 message = message
             });
 
+            response.ContentType = "application/json";
             response.StatusCode = statusCode;
 
             return response;
