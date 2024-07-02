@@ -16,6 +16,20 @@ This identity management app is built with ASP.NET Identity and SQL Server, feat
 * **Email Confirmation:** Email confirmation functionality using an SMTP server.
 * **Data Seeding:** Automatically seeds initial data for predefined roles.
 
+## Installation ##
+1. Clone the repository.
+2. Update the connection string in `appsettings.json` to point to your SQL Server instance.
+3. Configure the SMTP settings in `appsettings.json` for email confirmation.
+4. Run the application.
+
+## Usage ##
+### Seeding Data ##
+The application automatically seeds data for the following roles default users for each role:
+* Admin
+* Manager
+* Supervisor
+* Member
+
 ## API Endpoints ##
 ### Login ###
   * **Endpoint:** `/api/account/login`
@@ -255,16 +269,4 @@ This identity management app is built with ASP.NET Identity and SQL Server, feat
     }
     ```
 
-## Installation ##
-1. Clone the repository.
-2. Update the connection string in `appsettings.json` to point to your SQL Server instance.
-3. Configure the SMTP settings in `appsettings.json` for email confirmation.
-4. Run the application.
 
-## Usage ##
-### Seeding Data ##
-The application automatically seeds data for the following roles default users for each role:
-* Admin
-* Manager
-* Supervisor
-* Member
