@@ -235,7 +235,7 @@ This identity management app is built with ASP.NET Identity and SQL Server, feat
   * **Endpoint:** `/api/account/refresh-user-token`
   * **Headers:**
   ```
-  Authorization: Bearer {jet_token}
+  Authorization: Bearer {jwt_token}
 
   ```
   * **Method:** GET
