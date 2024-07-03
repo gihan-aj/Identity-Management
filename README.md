@@ -35,7 +35,7 @@ The application automatically seeds data for the following roles default users f
   * **Endpoint:** `/api/account/login`
   * **Method:** POST
   * **Request:**
-  ```
+  ```json
 {
     "username": "admin@example.com",
     "password": "******"
@@ -43,7 +43,7 @@ The application automatically seeds data for the following roles default users f
   ```
   * **Response:**
     * 200 OK:
-    ```
+    ```json
     {
       "firstName": "admin",
       "lastName": "user",
@@ -51,13 +51,13 @@ The application automatically seeds data for the following roles default users f
     }
     ```
     * 401 Unauthorized:
-    ```
+    ```json
     {
       "error": "Invalid username or password."
     }
     ```
     * 400 Bad Request: Validation Errors
-    ```
+    ```json
     {
       "error":
       {
@@ -74,7 +74,7 @@ The application automatically seeds data for the following roles default users f
   * **Endpoint:** `/api/account/register`
   * **Method:** POST
   * **Request:**
-  ```
+  ```json
 {
     "firstName": "Admin",
     "lastName": "User",
@@ -84,20 +84,20 @@ The application automatically seeds data for the following roles default users f
   ```
   * **Response:**
     * 201 Created:
-    ```
+    ```json
     {
       "title": "Account Created",
       "message": "Your account has been created. please confirm your email address.",
     }
     ```
     * 400 Bad Request:
-    ```
+    ```json
     {
       "error": "Failed to send email. Please contact administration"
     }
     ```
     * 400 Bad Request: Validation Errors
-    ```
+    ```json
     {
       "error":
       {
@@ -114,7 +114,7 @@ The application automatically seeds data for the following roles default users f
   * **Endpoint:** `/api/account/confirm-email`
   * **Method:** PUT
   * **Request:**
-  ```
+  ```json
 {
     "token": "fjhdjf",
     "email": "admin@example.com"
@@ -122,26 +122,26 @@ The application automatically seeds data for the following roles default users f
   ```
   * **Response:**
     * 200 OK:
-    ```
+    ```json
     {
       "title": "Email Confirmed",
       "message": "Your email address is confirmed. You can login now.",
     }
     ```
     * 401 Unauthorized:
-    ```
+    ```json
     {
       "error": "This email has not been registered yet."
     }
     ```
     * 400 Bad Request:
-    ```
+    ```json
     {
       "error": "Your email was confirmed before. Please login to your account."
     }
     ```
     * 400 Bad Request: Validation Errors
-    ```
+    ```json
     {
       "error":
       {
@@ -158,20 +158,20 @@ The application automatically seeds data for the following roles default users f
   * **Method:** POST
   * **Response:**
     * 200 OK:
-    ```
+    ```json
     {
       "title": "Confirmation link sent",
       "message": "Please confirm your email address.",
     }
     ```
     * 401 Unauthorized:
-    ```
+    ```json
     {
       "error": "This email address has not been registered yet."
     }
     ```
     * 400 Bad Request:
-    ```
+    ```json
     {
       "error": "Invalid email address"
     }
@@ -182,20 +182,20 @@ The application automatically seeds data for the following roles default users f
   * **Method:** POST
   * **Response:**
     * 200 OK:
-    ```
+    ```json
     {
       "title": "Forgot username or password email sent",
       "message": "Please check your email",
     }
     ```
     * 401 Unauthorized:
-    ```
+    ```json
     {
       "error": "This email address has not been registered yet."
     }
     ```
     * 400 Bad Request:
-    ```
+    ```json
     {
       "error": "Invalid email address"
     }
@@ -205,7 +205,7 @@ The application automatically seeds data for the following roles default users f
   * **Endpoint:** `/api/account/reset-password`
   * **Method:** PUT
   * **Request:**
-  ```
+  ```json
 {
     "token": "fjhdjf",
     "email": "admin@example.com",
@@ -214,26 +214,26 @@ The application automatically seeds data for the following roles default users f
   ```
   * **Response:**
     * 200 OK:
-    ```
+    ```json
     {
       "title": "Password reset success",
       "message": "Your password has been reset.",
     }
     ```
     * 401 Unauthorized:
-    ```
+    ```json
     {
       "error": "This email address has not been registered yet."
     }
     ```
     * 400 Bad Request:
-    ```
+    ```json
     {
       "error": "Please confirm your email first."
     }
     ```
     * 400 Bad Request: Validation Errors
-    ```
+    ```json
     {
       "error":
       {
@@ -255,7 +255,7 @@ The application automatically seeds data for the following roles default users f
   * **Method:** GET
   * **Response:**
     * 200 OK:
-    ```
+    ```json
     {
       "firstName": "admin",
       "lastName": "user",
@@ -263,7 +263,7 @@ The application automatically seeds data for the following roles default users f
     }
     ```
     * 401 Unauthorized:
-    ```
+    ```json
     {
       "error": "Unauthorized"
     }
